@@ -1,0 +1,64 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Speech to Text</title>
+    <style>
+      .error {
+        color: red;
+      }
+      .loading {
+        color: blue;
+      }
+      #result {
+        white-space: pre-line; /* This preserves line breaks */
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Speech to Text Converter</h1>
+    <input type="file" id="audioFile" accept="audio/*" />
+    <button id="submitBtn" onclick="transcribe()">Process Audio</button>
+    <div id="status"></div>
+    <div id="result"></div>
+
+    <script>
+      async function transcribe() {
+        const fileInput = document.getElementById("audioFile");
+        const status = document.getElementById("status");
+        const result = document.getElementById("result");
+
+        if (!fileInput.files[0]) {
+          status.innerHTML = '<p class="error">Please select a file first</p>';
+          return;
+        }
+
+        status.innerHTML = '<p class="loading">Processing...</p>';
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+
+        try {
+          const response = await fetch("/api/transcribe", {
+            method: "POST",
+            body: formData,
+          });
+          const data = await response.json();
+
+          if (data.error) {
+            status.innerHTML = `<p class="error">Error: ${data.error}</p>`;
+            return;
+          }
+
+          status.innerHTML = "";
+          // Split the text by spaces and join with newlines
+          const formattedText = data.text
+            .split(" ")
+            .filter((word) => word.trim() !== "") // Remove empty strings
+            .join("\n");
+          result.innerText = formattedText;
+        } catch (error) {
+          status.innerHTML = '<p class="error">Error processing file</p>';
+        }
+      }
+    </script>
+  </body>
+</html>
