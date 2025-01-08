@@ -11,6 +11,7 @@
       }
       #result {
         white-space: pre-line;
+        margin-top: 20px;
       }
       .controls {
         margin: 20px 0;
@@ -19,20 +20,38 @@
         padding: 5px;
         margin-right: 10px;
       }
+      .file-separator {
+        border-top: 2px dashed #ccc;
+        margin: 5px 0;
+      }
+      .file-title {
+        font-weight: bold;
+        font-size: 1.2em;
+        margin: 5px 0;
+        color: #333;
+      }
+      .progress {
+        margin-top: 10px;
+        color: #666;
+        font-style: italic;
+      }
     </style>
   </head>
   <body>
     <h1>Speech to Text Converter</h1>
     <div class="controls">
-      <input type="file" id="audioFile" accept="audio/*" />
+      <input type="file" id="audioFiles" accept="audio/*" multiple />
       <select id="chunkSize">
         <option value="40">40 characters</option>
         <option value="50" selected>50 characters</option>
         <option value="60">60 characters</option>
         <option value="70">70 characters</option>
       </select>
-      <button id="submitBtn" onclick="transcribe()">Process Audio</button>
+      <button id="submitBtn" onclick="transcribeAll()">
+        Process Audio Files
+      </button>
     </div>
+    <div id="progress"></div>
     <div id="status"></div>
     <div id="result"></div>
 
@@ -49,44 +68,76 @@
         return chunks;
       }
 
-      async function transcribe() {
-        const fileInput = document.getElementById("audioFile");
+      async function transcribeFile(file, chunkSize) {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const response = await fetch("/api/transcribe", {
+          method: "POST",
+          body: formData,
+        });
+        const data = await response.json();
+
+        if (data.error) {
+          throw new Error(data.error);
+        }
+
+        const chunks = splitTextIntoChunks(data.text, chunkSize);
+        return chunks.join("\n");
+      }
+
+      async function transcribeAll() {
+        const fileInput = document.getElementById("audioFiles");
         const chunkSizeSelect = document.getElementById("chunkSize");
         const status = document.getElementById("status");
         const result = document.getElementById("result");
+        const progress = document.getElementById("progress");
 
-        // Get the selected chunk size
         const selectedChunkSize = parseInt(chunkSizeSelect.value);
+        const files = fileInput.files;
 
-        if (!fileInput.files[0]) {
-          status.innerHTML = '<p class="error">Please select a file first</p>';
+        if (!files.length) {
+          status.innerHTML =
+            '<p class="error">Please select at least one file</p>';
           return;
         }
 
-        status.innerHTML = '<p class="loading">Processing...</p>';
-        const formData = new FormData();
-        formData.append("file", fileInput.files[0]);
+        // Clear previous results
+        result.innerHTML = "";
+        status.innerHTML = "";
 
-        try {
-          const response = await fetch("/api/transcribe", {
-            method: "POST",
-            body: formData,
-          });
-          const data = await response.json();
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
 
-          if (data.error) {
-            status.innerHTML = `<p class="error">Error: ${data.error}</p>`;
-            return;
+          // Update progress
+          progress.innerHTML = `<div class="progress">Processing file ${i + 1} of ${files.length}: ${file.name}</div>`;
+
+          try {
+            const transcribedText = await transcribeFile(
+              file,
+              selectedChunkSize,
+            );
+
+            // Add separator if not first file
+            if (i > 0) {
+              result.innerHTML += '<div class="file-separator"></div>';
+            }
+
+            // Add file name and transcribed text
+            result.innerHTML += `
+              <div class="file-title">${file.name}</div>
+              <div>${transcribedText}</div>
+            `;
+          } catch (error) {
+            result.innerHTML += `
+              <div class="file-title">${file.name}</div>
+              <p class="error">Error processing file: ${error.message}</p>
+            `;
           }
-
-          status.innerHTML = "";
-          // Split text into chunks based on selected size
-          const chunks = splitTextIntoChunks(data.text, selectedChunkSize);
-          const formattedText = chunks.join("\n");
-          result.innerText = formattedText;
-        } catch (error) {
-          status.innerHTML = '<p class="error">Error processing file</p>';
         }
+
+        // Clear progress after completion
+        progress.innerHTML = '<div class="progress">All files processed!</div>';
       }
     </script>
   </body>
