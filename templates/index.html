@@ -10,7 +10,6 @@
         color: blue;
       }
       #result {
-        white-space: pre-line;
         margin-top: 20px;
       }
       .controls {
@@ -35,6 +34,9 @@
         color: #666;
         font-style: italic;
       }
+      .transcribed-text {
+        line-height: 1.5;
+      }
     </style>
   </head>
   <body>
@@ -42,8 +44,8 @@
     <div class="controls">
       <input type="file" id="audioFiles" accept="audio/*" multiple />
       <select id="chunkSize">
-        <option value="40">40 characters</option>
-        <option value="50" selected>50 characters</option>
+        <option value="40" selected>40 characters</option>
+        <option value="50">50 characters</option>
         <option value="60">60 characters</option>
         <option value="70">70 characters</option>
       </select>
@@ -58,14 +60,16 @@
     <script>
       function splitTextIntoChunks(text, chunkSize) {
         const chunks = [];
-        let index = 0;
+        let remainingText = text.trim();
 
-        while (index < text.length) {
-          chunks.push(text.slice(index, index + chunkSize));
-          index += chunkSize;
+        while (remainingText.length > 0) {
+          let chunk = remainingText.slice(0, chunkSize);
+          chunks.push(chunk);
+          remainingText = remainingText.slice(chunkSize);
         }
 
-        return chunks;
+        // Join with HTML line break
+        return chunks.join("<br>");
       }
 
       async function transcribeFile(file, chunkSize) {
@@ -82,8 +86,8 @@
           throw new Error(data.error);
         }
 
-        const chunks = splitTextIntoChunks(data.text, chunkSize);
-        return chunks.join("\n");
+        // Process text with HTML line breaks
+        return splitTextIntoChunks(data.text, chunkSize);
       }
 
       async function transcribeAll() {
@@ -123,10 +127,10 @@
               result.innerHTML += '<div class="file-separator"></div>';
             }
 
-            // Add file name and transcribed text
+            // Add file name and transcribed text with HTML line breaks
             result.innerHTML += `
               <div class="file-title">${file.name}</div>
-              <div>${transcribedText}</div>
+              <div class="transcribed-text">${transcribedText}</div>
             `;
           } catch (error) {
             result.innerHTML += `
