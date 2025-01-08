@@ -10,14 +10,29 @@
         color: blue;
       }
       #result {
-        white-space: pre-line; /* This preserves line breaks */
+        white-space: pre-line;
+      }
+      .controls {
+        margin: 20px 0;
+      }
+      select {
+        padding: 5px;
+        margin-right: 10px;
       }
     </style>
   </head>
   <body>
     <h1>Speech to Text Converter</h1>
-    <input type="file" id="audioFile" accept="audio/*" />
-    <button id="submitBtn" onclick="transcribe()">Process Audio</button>
+    <div class="controls">
+      <input type="file" id="audioFile" accept="audio/*" />
+      <select id="chunkSize">
+        <option value="40">40 characters</option>
+        <option value="50" selected>50 characters</option>
+        <option value="60">60 characters</option>
+        <option value="70">70 characters</option>
+      </select>
+      <button id="submitBtn" onclick="transcribe()">Process Audio</button>
+    </div>
     <div id="status"></div>
     <div id="result"></div>
 
@@ -36,8 +51,12 @@
 
       async function transcribe() {
         const fileInput = document.getElementById("audioFile");
+        const chunkSizeSelect = document.getElementById("chunkSize");
         const status = document.getElementById("status");
         const result = document.getElementById("result");
+
+        // Get the selected chunk size
+        const selectedChunkSize = parseInt(chunkSizeSelect.value);
 
         if (!fileInput.files[0]) {
           status.innerHTML = '<p class="error">Please select a file first</p>';
@@ -61,8 +80,8 @@
           }
 
           status.innerHTML = "";
-          // Split text into chunks of 50 characters
-          const chunks = splitTextIntoChunks(data.text, 50);
+          // Split text into chunks based on selected size
+          const chunks = splitTextIntoChunks(data.text, selectedChunkSize);
           const formattedText = chunks.join("\n");
           result.innerText = formattedText;
         } catch (error) {
